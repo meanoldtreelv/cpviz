@@ -26,12 +26,12 @@ require_once 'graphviz/src/Alom/Graphviz/Subgraph.php';
 //$module_select = array();
 //global $active_modules;
 
-$action = isset($_POST['action']) ? $_POST['action'] : '';
-$extdisplay = isset($_POST['extdisplay']) ? $_POST['extdisplay'] : '';
-$iroute = isset($_POST['iroute']) ? $_POST['iroute'] : '';
+$action = isset($_REQUEST['action']) ? $_REQUEST['action'] : '';
+$extdisplay = isset($_REQUEST['extdisplay']) ? $_REQUEST['extdisplay'] : '';
+$iroute = isset($_REQUEST['iroute']) ? $_REQUEST['iroute'] : '';
  
 $html_txt = '<div class="content">';
-$html_txt .= '<br><h2>'._("FreePBX Call Plan Vizualizer").'</h2>';
+$html_txt .= '<br><h2>'._("FreePBX Dial Plan Vizualizer").'</h2>';
 
 $full_list = framework_check_extension_usage(true);
 $full_list = is_array($full_list)?$full_list:array();
@@ -47,7 +47,7 @@ $queuesetting = $astman->database_show("QUEUE");
 
 // Output a selector for the users to choose an inbound route
 $inroutes = dp_load_incoming_routes();
-
+//echo "<pre>";print_r($inroutes);echo "</pre>";
 $html_txt .= "<form name=\"routePrompt\" action=\"$_SERVER[PHP_SELF]\" method=\"POST\">\n";
 $html_txt .= "<input type=\"hidden\" name=\"display\" value=\"cpviz\">\n";
 $html_txt .= "Select an inbound route: ";
@@ -55,10 +55,10 @@ $html_txt .= "<select name=\"iroute\">\n";
 $html_txt .= "<option value=\"None\">Select A Route</option>\n";
 foreach ($inroutes as $ir) {
   $s = ($ir['extension'] == $iroute) ? "selected" : "";
-  $html_txt .= "<option value=\"$ir[extension]\" $s>$ir[extension]</option>\n";
+  $html_txt .= "<option value=\"$ir[extension]\" $s>$ir[extension]: $ir[description]</option>\n";
 }
 $html_txt .= "</select>\n";
-$html_txt .= "<input name=\"Submit\" type=\"submit\" value=\"Visualize Call Plan\">\n";
+$html_txt .= "<input name=\"Submit\" type=\"submit\" value=\"Visualize Dial Plan\">\n";
 $html_txt .= "</form>\n";
 $html_txt .= "<br>\n";
 
@@ -93,12 +93,13 @@ if ($iroute != '') {
 
     $html_txt .= "<script src=\"modules/cpviz/viz.js\"></script>\n";
     $html_txt .= "<script src=\"modules/cpviz/full.render.js\"></script>\n";
-    $html_txt .= "<div id='vizContainer'><h1>Call Plan For Inbound Route $iroute</h1></div>\n";
+    $html_txt .= "<div id='vizContainer'><h1>Dial Plan For Inbound Route $iroute</h1></div>\n";
     $html_txt .= "<script type=\"text/javascript\">\n";
     $html_txt .= "    var viz = new Viz();\n";
     // $html_txt .= " viz.renderSVGElement('$gtext')  \n";
     // $html_txt .= " viz.renderSVGElement('digraph { a -> b; }')  \n";
     // $html_txt .= " viz.renderSVGElement('digraph 5052327992 { \"5052327992\" [label=\"5052327992\", style=filled, fillcolor=\"#7979FF\"]; }')  \n";
+    // $html_txt .= " viz.renderSVGElement('digraph {splines=line;}')  \n";
     $html_txt .= " viz.renderSVGElement('$gtext')  \n";
     $html_txt .= "   .then(function(element) {                 \n";
     $html_txt .= "     document.getElementById(\"vizContainer\").appendChild(element);   \n";

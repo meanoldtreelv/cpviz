@@ -44,20 +44,18 @@ $queuesetting = $astman->database_show("QUEUE");
 // $html_txt .= "<pre>\n" . "ALL settings: " . print_r($allsetting, true) .
 //              "\n</pre><br>\n";
 
-
 // Output a selector for the users to choose an inbound route
 $inroutes = dp_load_incoming_routes();
 //echo "<pre>";print_r($inroutes);echo "</pre>";
 $html_txt .= "<form name=\"routePrompt\" action=\"$_SERVER[PHP_SELF]\" method=\"POST\">\n";
 $html_txt .= "<input type=\"hidden\" name=\"display\" value=\"cpviz\">\n";
 $html_txt .= "Select an inbound route: ";
-$html_txt .= "<select name=\"iroute\">\n";
-$html_txt .= "<option value=\"None\">Select A Route</option>\n";
+$html_txt .= "<input list=\"nums\" value=\"$iroute\" name=\"iroute\">\n";
+$html_txt .= "<datalist id=\"nums\">\n";
 foreach ($inroutes as $ir) {
-  $s = ($ir['extension'] == $iroute) ? "selected" : "";
-  $html_txt .= "<option value=\"$ir[extension]\" $s>$ir[extension]: $ir[description]</option>\n";
+  $html_txt .= "<option value=\"$ir[extension]\">$ir[extension]: $ir[description]</option>\n";
 }
-$html_txt .= "</select>\n";
+$html_txt .= "</datalist>\n";
 $html_txt .= "<input name=\"Submit\" type=\"submit\" value=\"Visualize Dial Plan\">\n";
 $html_txt .= "</form>\n";
 $html_txt .= "<br>\n";

@@ -88,7 +88,7 @@ function dp_follow_destinations (&$route, $destination) {
                          'style' => 'filled',
                          'URL'=> htmlentities('/admin/config.php?display=did&view=form&extdisplay='.$route['extension'].'%2F'),
 			 'target'=>'_blank',
-                         'fillcolor' => $pastels[0]));
+                         'fillcolor' => 'mediumspringgreen'));
     // $graph->node() returns the graph, not the node, so we always
     // have to get() the node after adding to the graph if we want
     // to save it for something.
@@ -133,6 +133,10 @@ function dp_follow_destinations (&$route, $destination) {
     dplog(9, "Making an edge from $ptxt -> $ntxt");
     $edge = $dpgraph->beginEdge(array($route['parent_node'], $node));
     $edge->attribute('label', $route['parent_edge_label']);
+	if (preg_match("/^(Match:)./", $route['parent_edge_label'])){
+		$edge->attribute('URL', $route['parent_edge_url']);
+		$edge->attribute('target', $route['parent_edge_target']);
+	}
   }
 
   // dplog(9, "The Graph: " . print_r($dpgraph, true));
@@ -155,21 +159,28 @@ function dp_follow_destinations (&$route, $destination) {
     $node->attribute('label', "TC: $tc[displayname]");
     $node->attribute('URL', htmlentities('/admin/config.php?display=timeconditions&view=form&itemid='.$tcnum));
     $node->attribute('target', '_blank');
-    $node->attribute('shape', 'diamond');
+    $node->attribute('shape', 'invhouse');
     $node->attribute('fillcolor', $pastels[1]);
     $node->attribute('style', 'filled');
 
   
     # Not going to use the time group info for right now.  Maybe put it in the edge text?
-    #$tgname = $route['timegroups'][$tc['time']]['description'];
+    $tgname = $route['timegroups'][$tc['time']]['description'];
     $tgtime = $route['timegroups'][$tc['time']]['time'];
+    $tgnum= $route['timegroups'][$tc['time']]['id'];
 
     # Now set the current node to be the parent and recurse on both the true and false branches
-    $route['parent_edge_label'] = 'Match: \\n'.$tgtime;
+    $route['parent_edge_label'] = 'Match: \\n'.$tgname.':\\n'.$tgtime;
+    $route['parent_edge_url'] = htmlentities('/admin/config.php?display=timegroups&view=form&extdisplay='.$tgnum);
+    $route['parent_edge_target'] = '_blank';
+
     $route['parent_node'] = $node;
     dp_follow_destinations($route, $tc['truegoto']);
 
+
     $route['parent_edge_label'] = 'NoMatch';
+    $route['parent_edge_url'] ='';
+    $route['parent_edge_target'] = '';
     $route['parent_node'] = $node;
     dp_follow_destinations($route, $tc['falsegoto']);
 
@@ -181,7 +192,8 @@ function dp_follow_destinations (&$route, $destination) {
     $qother = $matches[2];
 
     $q = $route['queues'][$qnum];
-    $node->attribute('label', "Queue: $q[descr]");
+    if ($q['maxwait']>=60){$maxwait=($q['maxwait'] / 60).' mins';}elseif($q['maxwait']==0){$maxwait='Unlimited';}else{$maxwait=$q['maxwait'].' secs';}
+    $node->attribute('label', "Queue $qnum: $q[descr]");
     $node->attribute('URL', htmlentities('/admin/config.php?display=queues&view=form&extdisplay='.$qnum));
     $node->attribute('target', '_blank');
     $node->attribute('fillcolor', $pastels[2]);
@@ -190,7 +202,7 @@ function dp_follow_destinations (&$route, $destination) {
     # The destinations we need to follow are the queue members (extensions)
     # and the no-answer destination.
     if ($q['dest'] != '') {
-      $route['parent_edge_label'] = 'No Answer';
+      $route['parent_edge_label'] = 'No Answer ('.$maxwait.')';
       $route['parent_node'] = $node;
       dp_follow_destinations($route, $q['dest']);
     }
@@ -254,7 +266,8 @@ function dp_follow_destinations (&$route, $destination) {
     $rgother = $matches[2];
 
     $rg = $route['ringgroups'][$rgnum];
-    $node->attribute('label', "RG: $rg[description]");
+    if ($rg['grptime']>=60){$rgmaxwait=($rg['grptime'] / 60).' mins';}else{$rgmaxwait=$rg['grptime'].' secs';}
+    $node->attribute('label', "Ring Group: $rgnum: $rg[description]");
     $node->attribute('URL', htmlentities('/admin/config.php?display=ringgroups&view=form&extdisplay='.$rgnum));
     $node->attribute('target', '_blank');
     $node->attribute('fillcolor', $pastels[4]);
@@ -263,7 +276,7 @@ function dp_follow_destinations (&$route, $destination) {
     # The destinations we need to follow are the no-answer destination
     # (postdest) and the members of the group.
     if ($rg['postdest'] != '') {
-      $route['parent_edge_label'] = 'No Answer';
+      $route['parent_edge_label'] = 'No Answer ('.$rgmaxwait.')';
       $route['parent_node'] = $node;
       dp_follow_destinations($route, $rg['postdest']);
     }
@@ -402,13 +415,15 @@ function dp_follow_destinations (&$route, $destination) {
   #
   # Voicemail
   #
-  } elseif (preg_match("/^ext-local,vm[i,s,u](\d+),(\d+)/", $destination, $matches)) {
-  $vmnum = $matches[1];
-  $vmother = $matches[2];
+  } elseif (preg_match("/^ext-local,vm([b,i,s,u])(\d+),(\d+)/", $destination, $matches)) {
+  $vmtype= $matches[1];
+  $vmnum = $matches[2];
+  $vmother = $matches[3];
   $vm = $route['vm'][$vmnum];
-//todo---- b, i,s,u ???
-  $node->attribute('label', 'Voicemail: '.$vmnum);
-  $node->attribute('URL', htmlentities('/admin/config.php?display=display=extensions&extdisplay='.$vmnum));
+  $vm_array=array('b'=>'(Busy Message)','i'=>'(Instructions Only)','s'=>'(No Message)','u'=>'(Unavailable Message)' );
+
+  $node->attribute('label', 'Voicemail: '.$vmnum.' '.$vm_array[$vmtype]);
+  $node->attribute('URL', htmlentities('/admin/config.php?display=extensions&extdisplay='.$vmnum));
   $node->attribute('target', '_blank');
   $node->attribute('fillcolor', $pastels[11]);
   $node->attribute('style', 'filled');
@@ -438,13 +453,19 @@ function dp_follow_destinations (&$route, $destination) {
     $daynightother = $matches[2];
     $daynight = $route['daynight'][$daynightnum];
 
+    //check current status and set path to active
+    $C = '/usr/sbin/asterisk -rx "database show DAYNIGHT/C'.$daynightnum.'" | cut -d \':\' -f2 | tr -d \' \' | head -1';
+    exec($C, $current_daynight);
+    $dactive = $nactive = "";
+    if ($current_daynight[0]=='DAY'){$dactive="(Active)";}else{$nactive="(Active)";}
+
     foreach ($daynight as $d){
       if ($d['dmode']=='day'){
-	 $route['parent_edge_label'] = 'Day Mode';
+	 $route['parent_edge_label'] = ' Day Mode '.$dactive;
          $route['parent_node'] = $node;
          dp_follow_destinations($route, $d['dest']);
       }elseif ($d['dmode']=='night'){
-          $route['parent_edge_label'] = 'Night Mode';
+          $route['parent_edge_label'] = ' Night Mode '.$nactive;
           $route['parent_node'] = $node;
           dp_follow_destinations($route, $d['dest']);
       }elseif ($d['dmode']=="fc_description"){
@@ -452,7 +473,7 @@ function dp_follow_destinations (&$route, $destination) {
       }
     }
     $daynight = $route['daynight'][$daynightnum];
-    $node->attribute('URL', htmlentities('/admin/config.php?display=daynight&view=form&itemid=0&extdisplay='.$daynightnum));
+    $node->attribute('URL', htmlentities('/admin/config.php?display=daynight&view=form&itemid='.$daynightnum.'&extdisplay='.$daynightnum));
     $node->attribute('target', '_blank');
     $node->attribute('fillcolor', $pastels[14]);
     $node->attribute('style', 'filled');
@@ -544,11 +565,11 @@ function dp_load_tables(&$dproute) {
     } else {
       $exploded=explode("|",$tgd['time']); 
       if ($exploded[0]!=='*'){$time=$exploded[0];}else{$time='';}
-      if ($exploded[1]!=='*'){$dow=ucwords($exploded[1],'-').',';}else{$dow='';}
-      if ($exploded[2]!=='*'){$date=$exploded[2];}else{$date='';}
-      if ($exploded[3]!=='*'){$month=ucfirst($exploded[3]);}else{$month='';}
+      if ($exploded[1]!=='*'){$dow=ucwords($exploded[1],'-').', ';}else{$dow='';}
+      if ($exploded[2]!=='*'){$date=$exploded[2].' ';}else{$date='';}
+      if ($exploded[3]!=='*'){$month=ucfirst($exploded[3]).' ';}else{$month='';}
 
-      $dproute['timegroups'][$id]['time'] .=' '.$dow.' '.$month.' '.$date.' '.$time.'\l';
+      $dproute['timegroups'][$id]['time'] .=$dow . $month . $date . $time.'\l';
       $dproute['timegroups'][$id]['time'] .= "\n";
     }
   }
@@ -717,7 +738,6 @@ function dp_load_tables(&$dproute) {
     $id = $daynight['ext'];
     $dproute['daynight'][$id][] = $daynight;
   }
-
 
 }
 
